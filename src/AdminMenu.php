@@ -105,6 +105,9 @@ class AdminMenu
             'wack-log-settings-page',
             'wack-log-settings-log-format-section'
         );
+
+        // Remove the default WACK Stack settings page
+        remove_submenu_page('wack-stack-settings', 'wack-stack-settings');
     }
 
     /**
