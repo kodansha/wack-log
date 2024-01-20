@@ -1,0 +1,30 @@
+{
+  "name": "kodansha/wack-log",
+  "description": "Simple logger plugin to output logs to stdout.",
+  "keywords": [
+    "wordpress",
+    "plugin"
+  ],
+  "type": "wordpress-plugin",
+  "authors": [
+    {
+      "name": "KODANSHA Ltd.",
+      "homepage": "https://github.com/kodansha"
+    },
+    {
+      "name": "Hirofumi Wakasugi",
+      "homepage": "https://github.com/5t111111"
+    }
+  ],
+  "homepage": "https://github.com/kodansha/wack-log",
+  "license": "GPL-3.0-or-later",
+  "require": {
+    "php": ">=8.1",
+    "monolog/monolog": "^3.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "WackLog\\": "src"
+    }
+  }
+}
