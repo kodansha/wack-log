@@ -4,7 +4,7 @@
  * Plugin Name: WACK Log
  * Plugin URI: https://packagist.org/packages/kodansha/wack-log
  * Description: Simple logger plugin to output logs to stdout.
- * Version: 0.0.1
+ * Version: 0.0.3
  * Author: Kodansha Ltd.
  * Author URI: https://github.com/kodansha
  * License: GPLv3 or later
