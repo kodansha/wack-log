@@ -4,6 +4,7 @@ namespace WackLog;
 
 /**
  * Class PluginSettings
+ *
  * @package WackLog
  */
 final class PluginSettings
@@ -30,6 +31,7 @@ final class PluginSettings
 
     /**
      * Get the flag to use JSON format
+     *
      * @return string The flag to use JSON format
      */
     public function useJsonFormat(): bool
@@ -39,6 +41,7 @@ final class PluginSettings
 
     /**
      * Get instance
+     *
      * @return PluginSettings
      */
     public static function get(): PluginSettings

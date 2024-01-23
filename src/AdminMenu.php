@@ -2,6 +2,11 @@
 
 namespace WackLog;
 
+/**
+ * Class AdminMenu
+ *
+ * @package WackLog
+ */
 class AdminMenu
 {
     /**
@@ -95,7 +100,7 @@ class AdminMenu
             'use_json_format',
             'Use JSON as log format',
             function () {
-                $settings_option = get_option("wack_log_settings");
+                $settings_option = get_option('wack_log_settings');
                 $use_json_format = $settings_option['use_json_format'] ?? false;
                 ?>
                 <input type="checkbox" name="wack_log_settings[use_json_format]" <?php echo $use_json_format ? 'checked' : ''; ?>>

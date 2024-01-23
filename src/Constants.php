@@ -4,6 +4,7 @@ namespace WackLog;
 
 /**
  * Class Constant
+ *
  * @package WackLog
  */
 final class Constants

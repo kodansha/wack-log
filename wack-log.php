@@ -31,6 +31,7 @@ if (!function_exists('wack_log')) {
      *
      * @param string|null $message The message to log. If null, the function will return the logger instance.
      * @param bool $force_reinstantiation If true, the function will reinstantiate the logger instance.
+     *
      * @return WackLog\StdoutLogger|null The logger instance or null if a message was logged.
      */
     function wack_log(string $message = null, bool $force_reinstantiation = false): WackLog\StdoutLogger|null
