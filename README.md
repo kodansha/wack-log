@@ -62,6 +62,6 @@ Go to the settings screen of WACK Log in the WordPress admin menu and
 follow the instructions on the screen.
 
 > [!NOTE]
-> If settings exist both in `WACK_LOG_SETTINGS` and the settings screen
+> If settings exist both in `WACK_LOG_SETTINGS` and the admin menu settings
 > at the same time, the settings defined in the constant are prioritized as
 > a general rule.
