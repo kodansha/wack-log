@@ -52,7 +52,7 @@ Define `WACK_LOG_SETTINGS` in functions.php or similar:
 
 ```php
 define('WACK_LOG_SETTINGS', [
-    'use_json_format' => false,
+    'use_json_format' => true,
 ]);
 ```
 
