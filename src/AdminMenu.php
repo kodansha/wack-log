@@ -118,11 +118,11 @@ class AdminMenu
     /**
      * Sanitize the options passed in
      *
-     * - Reinstantiate the logger instance
+     * - Re-instantiate the logger instance
      */
     public function optionsSanitizeCallback($options): array | null
     {
-        wack_log('Reinstantiate logger instance as settings have been saved.', true);
+        logger('Re-instantiate logger instance as settings have been saved.', true);
         return $options;
     }
 }

@@ -24,19 +24,19 @@ composer require kodansha/wack-log
 
 ## Usage
 
-WACK Log exposes a global function `wack_log()` that can be used as below:
+WACK Log exposes a global function `logger()` that can be used as below:
 
 ```php
-wack_log()->debug('This is debug message.');
-wack_log()->info('This is information message.');
-wack_log()->warning('This is warning message.');
-wack_log()->error('This is error message.');
+logger()->debug('This is debug message.');
+logger()->info('This is information message.');
+logger()->warning('This is warning message.');
+logger()->error('This is error message.');
 ```
 
 In addition, it also provides a shorthand usage that is convenient for debugging:
 
 ```php
-wack_log('This is debug message.');
+logger('This is debug message.');
 ```
 
 ## Configuration

@@ -4,8 +4,8 @@
  * Plugin Name: WACK Log
  * Plugin URI: https://packagist.org/packages/kodansha/wack-log
  * Description: Simple logger plugin to output logs to stdout.
- * Version: 0.0.3
- * Author: Kodansha Ltd.
+ * Version: 0.1.0
+ * Author: KODANSHA Ltd.
  * Author URI: https://github.com/kodansha
  * License: GPLv3 or later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -21,7 +21,7 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
 
-if (!function_exists('wack_log')) {
+if (!function_exists('logger')) {
     /**
      * Logs a message to stdout or returns an instance of the logger.
      *
@@ -30,17 +30,17 @@ if (!function_exists('wack_log')) {
      * If no message is provided, it returns the logger instance.
      *
      * @param string|null $message The message to log. If null, the function will return the logger instance.
-     * @param bool $force_reinstantiation If true, the function will reinstantiate the logger instance.
+     * @param bool $force_re_instantiation If true, the function will re-instantiate the logger instance.
      *
      * @return WackLog\StdoutLogger|null The logger instance or null if a message was logged.
      */
-    function wack_log(string $message = null, bool $force_reinstantiation = false): WackLog\StdoutLogger|null
+    function logger(string $message = null, bool $force_re_instantiation = false): WackLog\StdoutLogger|null
     {
         static $instance = null;
 
         $use_json_log_format = WackLog\PluginSettings::get()->useJsonFormat();
 
-        if (is_null($instance) || $force_reinstantiation) {
+        if (is_null($instance) || $force_re_instantiation) {
             $instance = new WackLog\StdoutLogger($use_json_log_format);
         }
 
