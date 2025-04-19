@@ -4,7 +4,7 @@
  * Plugin Name: WACK Log
  * Plugin URI: https://packagist.org/packages/kodansha/wack-log
  * Description: Simple logger plugin to output logs to stdout.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Author: KODANSHAtech LLC.
  * Author URI: https://github.com/kodansha
  * License: GPLv3 or later
@@ -34,7 +34,7 @@ if (!function_exists('logger')) {
      *
      * @return WackLog\StdoutLogger|null The logger instance or null if a message was logged.
      */
-    function logger(string $message = null, bool $force_re_instantiation = false): WackLog\StdoutLogger|null
+    function logger(?string $message = null, bool $force_re_instantiation = false): WackLog\StdoutLogger|null
     {
         static $instance = null;
 
