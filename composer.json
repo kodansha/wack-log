@@ -19,21 +19,25 @@
   "homepage": "https://github.com/kodansha/wack-log",
   "license": "GPL-3.0-or-later",
   "require": {
-    "php": ">=8.1",
-    "monolog/monolog": "^3.5"
+    "php": ">=8.2",
+    "monolog/monolog": "^3.0"
   },
   "require-dev": {
-    "10up/wp_mock": "^0.5.0",
-    "phpunit/phpunit": "^9.6",
-    "squizlabs/php_codesniffer": "^3.8"
+    "10up/wp_mock": "^1.0",
+    "laravel/pint": "^1.0"
+  },
+  "config": {
+    "sort-packages": true,
+    "optimize-autoloader": true
+  },
+  "scripts": {
+    "test": "phpunit",
+    "lint": "pint --test",
+    "lint:fix": "pint"
   },
   "autoload": {
     "psr-4": {
       "WackLog\\": "src"
     }
-  },
-  "config": {
-    "sort-packages": true,
-    "optimize-autoloader": true
   }
 }

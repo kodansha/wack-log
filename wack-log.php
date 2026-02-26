@@ -34,7 +34,7 @@ if (!function_exists('logger')) {
      *
      * @return WackLog\StdoutLogger|null The logger instance or null if a message was logged.
      */
-    function logger(?string $message = null, bool $force_re_instantiation = false): WackLog\StdoutLogger|null
+    function logger(?string $message = null, bool $force_re_instantiation = false): ?WackLog\StdoutLogger
     {
         static $instance = null;
 
