@@ -51,7 +51,7 @@ class AdminMenu
                     </div>
                     <?php
                 },
-                'dashicons-superhero-alt'
+                'dashicons-superhero-alt',
             );
         }
     }
@@ -71,19 +71,19 @@ class AdminMenu
                         <h1>WACK Log Settings</h1>
                         <?php
                         settings_fields('wack-log-settings');
-                        do_settings_sections('wack-log-settings-page');
-                        submit_button();
-                        ?>
+                do_settings_sections('wack-log-settings-page');
+                submit_button();
+                ?>
                     </form>
                 </div>
                 <?php
-            }
+            },
         );
 
         register_setting(
             'wack-log-settings',
             'wack_log_settings',
-            ['sanitize_callback' => [$this, 'optionsSanitizeCallback']]
+            ['sanitize_callback' => [$this, 'optionsSanitizeCallback']],
         );
 
         //----------------------------------------------------------------------
@@ -93,7 +93,7 @@ class AdminMenu
             'wack-log-settings-log-format-section',
             'Log Format',
             '__return_null',
-            'wack-log-settings-page'
+            'wack-log-settings-page',
         );
 
         add_settings_field(
@@ -108,7 +108,7 @@ class AdminMenu
                 <?php
             },
             'wack-log-settings-page',
-            'wack-log-settings-log-format-section'
+            'wack-log-settings-log-format-section',
         );
 
         // Remove the default WACK Stack settings page
@@ -120,7 +120,7 @@ class AdminMenu
      *
      * - Re-instantiate the logger instance
      */
-    public function optionsSanitizeCallback($options): array | null
+    public function optionsSanitizeCallback($options): ?array
     {
         logger('Re-instantiate logger instance as settings have been saved.', true);
         return $options;

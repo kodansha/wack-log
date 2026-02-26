@@ -17,7 +17,7 @@ final class PluginSettings
         $use_json_format = self::getUseJsonFormatOptionFromConstant();
         if ($use_json_format === true) {
             $this->use_json_format = true;
-        } else if ($use_json_format === false) {
+        } elseif ($use_json_format === false) {
             $this->use_json_format = false;
         } else {
             $use_json_format = self::getUseJsonFormatOptionFromDatabase();
@@ -52,7 +52,7 @@ final class PluginSettings
     /**
      * Get the flag to use JSON format from the 'WACK_LOG_SETTINGS' constant.
      */
-    public static function getUseJsonFormatOptionFromConstant(): bool | null
+    public static function getUseJsonFormatOptionFromConstant(): ?bool
     {
         if (!isset(Constants::settingsConstant()['use_json_format'])) {
             return null;
