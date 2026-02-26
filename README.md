@@ -8,7 +8,7 @@ especially convenient for those that are containerized.
 
 ## Installation
 
-- Requires PHP 8.1 or later
+- Requires PHP 8.2 or later
 - Requires WordPress 6.0 or later
 - Requires Composer
 
