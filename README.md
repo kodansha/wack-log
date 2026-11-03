@@ -76,6 +76,8 @@ define('WACK_LOG_SETTINGS', [
 > - Messages passed directly to `error_log()` are not captured.
 > - Fatal errors are also written to PHP's standard error log because PHP
 >   itself handles them. Set `log_errors` to `Off` if you don't want them.
+> - When the memory limit is exceeded, `memory_limit` is raised by 8 MiB on
+>   shutdown so that the error can still be logged.
 > - Since non-fatal errors are no longer passed to PHP's standard error handler,
 >   they are not written to `wp-content/debug.log` or displayed on the screen
 >   even if `WP_DEBUG_LOG` / `WP_DEBUG_DISPLAY` are enabled.

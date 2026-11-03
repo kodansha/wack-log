@@ -7,7 +7,7 @@
  * given as the first argument, so that behavior which ends the process
  * (fatal errors, uncaught exceptions, shutdown functions) can be tested.
  *
- * Usage: php error-capture.php <scenario> [--wp-fatal-handler]
+ * Usage: php error-capture.php <scenario> [--wp-fatal-handler] [--previous-handler] [--lazy-logger]
  */
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -79,8 +79,11 @@ if (in_array('--previous-handler', $argv, true)) {
     });
 }
 
-$logger = new WackLog\StdoutLogger(true);
-(new WackLog\ErrorCapture($logger->getMonolog(), true))->register();
+// --lazy-logger mimics the plugin, which creates the logger only when the first record is logged
+$logger = in_array('--lazy-logger', $argv, true)
+    ? fn() => (new WackLog\StdoutLogger(true))->getMonolog()
+    : (new WackLog\StdoutLogger(true))->getMonolog();
+(new WackLog\ErrorCapture($logger, true))->register();
 
 switch ($scenario) {
     case 'warning':
@@ -133,6 +136,15 @@ switch ($scenario) {
         $data = [];
         while (true) {
             $data[] = str_repeat('x', 1024 * 1024);
+        }
+
+        // no break
+    case 'out_of_memory_small':
+        // Small allocations leave almost no free memory when the limit is reached
+        ini_set('memory_limit', '32M');
+        $data = [];
+        while (true) {
+            $data[] = str_repeat('x', 1024);
         }
 
         // no break

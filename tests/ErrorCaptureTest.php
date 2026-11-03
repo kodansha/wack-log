@@ -17,6 +17,8 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
 
     private int $error_reporting;
 
+    private string $memory_limit;
+
     /** Number of error handlers pushed in a test, to be restored in tearDown() */
     private int $pushed_error_handlers = 0;
 
@@ -27,6 +29,7 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
         $this->handler = new TestHandler();
         $this->logger = new Logger('test', [$this->handler]);
         $this->error_reporting = error_reporting();
+        $this->memory_limit = ini_get('memory_limit');
     }
 
     public function tearDown(): void
@@ -35,6 +38,7 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
             restore_error_handler();
         }
         error_reporting($this->error_reporting);
+        ini_set('memory_limit', $this->memory_limit);
 
         parent::tearDown();
     }
@@ -603,6 +607,88 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
         $capture->filterPhpErrorMessage('message', ['type' => E_WARNING, 'message' => 'w', 'file' => 'f', 'line' => 1]);
 
         $this->assertNotNull(self::reservedMemory($capture));
+    }
+
+    private static function outOfMemoryError(): array
+    {
+        return [
+            'type' => E_ERROR,
+            'message' => 'Allowed memory size of 134217728 bytes exhausted (tried to allocate 2097152 bytes)',
+            'file' => 'f',
+            'line' => 1,
+        ];
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_raises_memory_limit_for_out_of_memory_error(): void
+    {
+        ini_set('memory_limit', '256M');
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(self::outOfMemoryError());
+
+        $this->assertSame((string) (256 * 1024 * 1024 + ErrorCapture::OUT_OF_MEMORY_EXTRA_LIMIT), ini_get('memory_limit'));
+        $this->assertCount(1, $this->handler->getRecords());
+    }
+
+    // phpcs:ignore
+    public function test_filterPhpErrorMessage_raises_memory_limit_for_out_of_memory_error(): void
+    {
+        ini_set('memory_limit', '256M');
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->filterPhpErrorMessage('message', self::outOfMemoryError());
+
+        $this->assertSame((string) (256 * 1024 * 1024 + ErrorCapture::OUT_OF_MEMORY_EXTRA_LIMIT), ini_get('memory_limit'));
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_raises_memory_limit_above_usage(): void
+    {
+        // A limit below the usage is rejected by ini_set(), so use the smallest accepted one
+        $usage = memory_get_usage(true);
+        ini_set('memory_limit', (string) $usage);
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(self::outOfMemoryError());
+
+        $this->assertGreaterThanOrEqual($usage + ErrorCapture::OUT_OF_MEMORY_EXTRA_LIMIT, (int) ini_get('memory_limit'));
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_does_not_limit_unlimited_memory(): void
+    {
+        ini_set('memory_limit', '-1');
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(self::outOfMemoryError());
+
+        $this->assertSame('-1', ini_get('memory_limit'));
+        $this->assertCount(1, $this->handler->getRecords());
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_does_not_raise_memory_limit_for_other_fatal_errors(): void
+    {
+        ini_set('memory_limit', '256M');
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(['type' => E_ERROR, 'message' => 'Fatal!', 'file' => 'f', 'line' => 1]);
+
+        $this->assertSame('256M', ini_get('memory_limit'));
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_does_not_raise_memory_limit_for_unreported_errors(): void
+    {
+        ini_set('memory_limit', '256M');
+        error_reporting(0);
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(self::outOfMemoryError());
+
+        $this->assertSame('256M', ini_get('memory_limit'));
+        $this->assertCount(0, $this->handler->getRecords());
     }
 
     // phpcs:ignore

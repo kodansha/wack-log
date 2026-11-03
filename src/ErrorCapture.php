@@ -84,6 +84,14 @@ class ErrorCapture
         'deprecated_hook_run' => ['logDeprecatedHook', 4, 'deprecated_hook_trigger_error'],
     ];
 
+    /**
+     * Memory added to memory_limit to log an out-of-memory error
+     *
+     * Freeing the reserved memory is not always enough, because PHP allocates memory from the
+     * system in 2 MiB chunks and the logger may need a new chunk (e.g. to load its classes).
+     */
+    public const OUT_OF_MEMORY_EXTRA_LIMIT = 8 * 1024 * 1024;
+
     private bool $registered = false;
 
     /** @var callable|null */
@@ -209,6 +217,10 @@ class ErrorCapture
         $this->reserved_memory = null;
         $this->fatal_error_logged = true;
 
+        if (self::isMemoryLimitError($error['message'] ?? '')) {
+            self::raiseMemoryLimit();
+        }
+
         $this->logger()->log(
             LogLevel::CRITICAL,
             sprintf('PHP Fatal error (%s): %s in %s on line %d', self::errorName($error['type']), $error['message'], $error['file'], $error['line']),
@@ -325,6 +337,27 @@ class ErrorCapture
     /**
      * Get the logger to use now
      */
+    private static function isMemoryLimitError(string $message): bool
+    {
+        return str_starts_with($message, 'Allowed memory size of');
+    }
+
+    /**
+     * Raise memory_limit so that the logger can allocate memory
+     *
+     * The base is the larger of the current limit and usage, so that the limit is never lowered
+     * (e.g. when a single large allocation failed while usage was still low).
+     */
+    private static function raiseMemoryLimit(): void
+    {
+        $limit = ini_parse_quantity((string) ini_get('memory_limit'));
+        if ($limit < 0) {
+            return;
+        }
+
+        ini_set('memory_limit', (string) (max($limit, memory_get_usage(true)) + self::OUT_OF_MEMORY_EXTRA_LIMIT));
+    }
+
     private function logger(): LoggerInterface
     {
         return $this->logger instanceof Closure ? ($this->logger)() : $this->logger;

@@ -13,7 +13,7 @@ final class ErrorCaptureProcessTest extends TestCase
     /**
      * Run the fixture and return [exit code, decoded JSON log records from stdout, stdout, stderr]
      */
-    private function runScenario(string $scenario, bool $wp_fatal_handler = false, bool $previous_handler = false): array
+    private function runScenario(string $scenario, bool $wp_fatal_handler = false, bool $previous_handler = false, bool $lazy_logger = false): array
     {
         $command = [
             PHP_BINARY,
@@ -30,6 +30,9 @@ final class ErrorCaptureProcessTest extends TestCase
         }
         if ($previous_handler) {
             $command[] = '--previous-handler';
+        }
+        if ($lazy_logger) {
+            $command[] = '--lazy-logger';
         }
 
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -216,5 +219,32 @@ final class ErrorCaptureProcessTest extends TestCase
         $this->assertStringContainsString('WP_DIE', $stderr);
         $this->assertCount(1, $records);
         $this->assertStringContainsString('Allowed memory size', $records[0]['message']);
+    }
+
+    public static function smallAllocationOutOfMemoryProvider(): array
+    {
+        return [
+            'logger created up front' => [false, false],
+            'logger created on first log' => [false, true],
+            'logger created on first log, WP fatal handler' => [true, true],
+        ];
+    }
+
+    /**
+     * Small allocations exhaust memory without leaving a free 2 MiB chunk, so freeing the
+     * reserved memory alone is not enough to load the logger classes and log the error
+     *
+     * @dataProvider smallAllocationOutOfMemoryProvider
+     */
+    // phpcs:ignore
+    public function test_out_of_memory_error_by_small_allocations_is_logged(bool $wp_fatal_handler, bool $lazy_logger): void
+    {
+        [$exit_code, $records, $stdout, $stderr] = $this->runScenario('out_of_memory_small', $wp_fatal_handler, false, $lazy_logger);
+
+        $this->assertSame($wp_fatal_handler ? 1 : 255, $exit_code);
+        $this->assertCount(1, $records, $stderr);
+        $this->assertSame('CRITICAL', $records[0]['level_name']);
+        $this->assertStringContainsString('Allowed memory size', $records[0]['message']);
+        $this->assertSame(1, substr_count($stderr, 'Allowed memory size'), 'Logging itself should not run out of memory');
     }
 }
