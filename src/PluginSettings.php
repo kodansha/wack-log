@@ -11,22 +11,16 @@ final class PluginSettings
 {
     private bool $use_json_format;
 
+    private bool $capture_php_errors;
+
     final private function __construct()
     {
         // If the value exists in the constant, always use that value
-        $use_json_format = self::getUseJsonFormatOptionFromConstant();
-        if ($use_json_format === true) {
-            $this->use_json_format = true;
-        } elseif ($use_json_format === false) {
-            $this->use_json_format = false;
-        } else {
-            $use_json_format = self::getUseJsonFormatOptionFromDatabase();
-            if ($use_json_format === true) {
-                $this->use_json_format = true;
-            } else {
-                $this->use_json_format = false;
-            }
-        }
+        $this->use_json_format = self::getUseJsonFormatOptionFromConstant()
+            ?? self::getUseJsonFormatOptionFromDatabase();
+
+        $this->capture_php_errors = self::getCapturePhpErrorsOptionFromConstant()
+            ?? self::getCapturePhpErrorsOptionFromDatabase();
     }
 
     /**
@@ -37,6 +31,14 @@ final class PluginSettings
     public function useJsonFormat(): bool
     {
         return $this->use_json_format;
+    }
+
+    /**
+     * Get the flag to capture PHP errors and WordPress debug messages
+     */
+    public function capturePhpErrors(): bool
+    {
+        return $this->capture_php_errors;
     }
 
     /**
@@ -54,15 +56,7 @@ final class PluginSettings
      */
     public static function getUseJsonFormatOptionFromConstant(): ?bool
     {
-        if (!isset(Constants::settingsConstant()['use_json_format'])) {
-            return null;
-        }
-
-        if (Constants::settingsConstant()['use_json_format'] === true) {
-            return true;
-        } else {
-            return false;
-        }
+        return self::getBooleanOptionFromConstant('use_json_format');
     }
 
     /**
@@ -70,10 +64,50 @@ final class PluginSettings
      */
     public static function getUseJsonFormatOptionFromDatabase(): bool
     {
+        return self::getBooleanOptionFromDatabase('use_json_format');
+    }
+
+    /**
+     * Get the flag to capture PHP errors from the 'WACK_LOG_SETTINGS' constant.
+     */
+    public static function getCapturePhpErrorsOptionFromConstant(): ?bool
+    {
+        return self::getBooleanOptionFromConstant('capture_php_errors');
+    }
+
+    /**
+     * Get the flag to capture PHP errors from the database.
+     */
+    public static function getCapturePhpErrorsOptionFromDatabase(): bool
+    {
+        return self::getBooleanOptionFromDatabase('capture_php_errors');
+    }
+
+    /**
+     * Get a boolean option from the 'WACK_LOG_SETTINGS' constant.
+     *
+     * @return bool|null true only if the value is exactly true, null if the key is not set
+     */
+    private static function getBooleanOptionFromConstant(string $key): ?bool
+    {
+        if (!isset(Constants::settingsConstant()[$key])) {
+            return null;
+        }
+
+        return Constants::settingsConstant()[$key] === true;
+    }
+
+    /**
+     * Get a boolean option from the database.
+     *
+     * Checkbox values are saved as 'on', so any truthy value is treated as true.
+     */
+    private static function getBooleanOptionFromDatabase(string $key): bool
+    {
         $settings_option = get_option('wack_log_settings');
 
-        if ($settings_option && isset($settings_option['use_json_format'])) {
-            return $settings_option['use_json_format'];
+        if ($settings_option && isset($settings_option[$key])) {
+            return (bool) $settings_option[$key];
         }
 
         return false;

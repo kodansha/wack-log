@@ -111,6 +111,32 @@ class AdminMenu
             'wack-log-settings-log-format-section',
         );
 
+        //----------------------------------------------------------------------
+        // Error Capture
+        //----------------------------------------------------------------------
+        add_settings_section(
+            'wack-log-settings-error-capture-section',
+            'Error Capture',
+            '__return_null',
+            'wack-log-settings-page',
+        );
+
+        add_settings_field(
+            'capture_php_errors',
+            'Capture PHP errors',
+            function () {
+                $settings_option = get_option('wack_log_settings');
+                $capture_php_errors = $settings_option['capture_php_errors'] ?? false;
+                ?>
+                <input type="checkbox" name="wack_log_settings[capture_php_errors]" <?php echo $capture_php_errors ? 'checked' : ''; ?>>
+                <p>Check if you want to output PHP errors (warnings, notices, deprecations and fatal errors) and WordPress debug messages through WACK Log instead of PHP's standard error log.</p>
+                <p>The change takes effect from the next request.</p>
+                <?php
+            },
+            'wack-log-settings-page',
+            'wack-log-settings-error-capture-section',
+        );
+
         // Remove the default WACK Stack settings page
         remove_submenu_page('wack-stack-settings', 'wack-stack-settings');
     }

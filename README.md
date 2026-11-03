@@ -39,6 +39,49 @@ In addition, it also provides a shorthand usage that is convenient for debugging
 logger('This is debug message.');
 ```
 
+Each method also accepts a context array as the second argument:
+
+```php
+logger()->info('User logged in.', ['user_id' => $user->ID]);
+```
+
+## Capturing PHP errors
+
+When the `capture_php_errors` setting is enabled, WACK Log replaces PHP's
+standard error log, so that PHP errors and WordPress debug messages are also
+output through WACK Log (in JSON if `use_json_format` is enabled):
+
+| Source | Log level | Notes |
+|---|---|---|
+| Warnings (`E_WARNING`, `E_USER_WARNING`, ...) | `WARNING` | Not passed to PHP's standard error log |
+| Notices and deprecations (`E_NOTICE`, `E_DEPRECATED`, ...) | `NOTICE` | Not passed to PHP's standard error log |
+| Fatal errors and uncaught exceptions | `CRITICAL` | Logged on shutdown, or right before WordPress shows its critical error page |
+| `_doing_it_wrong()`, `_deprecated_function()` and other `_deprecated_*()` (only when `WP_DEBUG` is `true`) | `NOTICE` | Logged with structured context, and their `trigger_error()` calls are suppressed to avoid duplicates |
+
+```php
+define('WACK_LOG_SETTINGS', [
+    'use_json_format' => true,
+    'capture_php_errors' => true,
+]);
+```
+
+> [!NOTE]
+> Please be aware of the following limitations:
+>
+> - `error_reporting()` and the `@` operator are respected.
+> - Errors raised before WACK Log is loaded (e.g. in `wp-config.php`,
+>   WordPress core bootstrap or must-use plugins) are not captured.
+> - Messages passed directly to `error_log()` are not captured.
+> - Fatal errors are also written to PHP's standard error log because PHP
+>   itself handles them. Set `log_errors` to `Off` if you don't want them.
+> - Since non-fatal errors are no longer passed to PHP's standard error handler,
+>   they are not written to `wp-content/debug.log` or displayed on the screen
+>   even if `WP_DEBUG_LOG` / `WP_DEBUG_DISPLAY` are enabled.
+>   If another error handler (e.g. an error tracking service) was registered
+>   before WACK Log, it is still called.
+> - Uncaught exceptions are not handled by an exception handler, so that
+>   WordPress' fatal error handler and recovery mode keep working.
+
 ## Configuration
 
 There are two methods for customizing the behavior of WACK Log:
@@ -53,8 +96,14 @@ Define `WACK_LOG_SETTINGS` in functions.php or similar:
 ```php
 define('WACK_LOG_SETTINGS', [
     'use_json_format' => true,
+    'capture_php_errors' => true,
 ]);
 ```
+
+| Key | Default | Description |
+|---|---|---|
+| `use_json_format` | `false` | Output logs in JSON format |
+| `capture_php_errors` | `false` | Capture PHP errors and WordPress debug messages (see [Capturing PHP errors](#capturing-php-errors)) |
 
 ### Setting via WordPress admin menu
 

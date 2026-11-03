@@ -53,6 +53,39 @@ if (!function_exists('logger')) {
     }
 }
 
+if (!function_exists('wack_log_register_error_capture')) {
+    /**
+     * Route PHP errors and WordPress debug messages to the logger if enabled in the settings.
+     *
+     * This is called when the plugin file is loaded (not on a hook) to capture errors
+     * as early as possible.
+     *
+     * @return WackLog\ErrorCapture|null The registered instance, or null if disabled.
+     */
+    function wack_log_register_error_capture(): ?WackLog\ErrorCapture
+    {
+        static $instance = null;
+
+        if (!is_null($instance)) {
+            return $instance;
+        }
+
+        if (!WackLog\PluginSettings::get()->capturePhpErrors()) {
+            return null;
+        }
+
+        $instance = new WackLog\ErrorCapture(
+            logger()->getMonolog(),
+            defined('WP_DEBUG') && WP_DEBUG,
+        );
+        $instance->register();
+
+        return $instance;
+    }
+}
+
+wack_log_register_error_capture();
+
 /**
  * Initialize plugin
  */
