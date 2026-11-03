@@ -94,7 +94,7 @@ There are two methods for customizing the behavior of WACK Log:
 
 ### Setting via WACK_LOG_SETTINGS
 
-Define `WACK_LOG_SETTINGS` in functions.php or similar:
+Define `WACK_LOG_SETTINGS` in `wp-config.php` (or `config/application.php` for Bedrock):
 
 ```php
 define('WACK_LOG_SETTINGS', [
@@ -107,6 +107,11 @@ define('WACK_LOG_SETTINGS', [
 |---|---|---|
 | `use_json_format` | `false` | Output logs in JSON format |
 | `capture_php_errors` | `false` | Capture PHP errors and WordPress debug messages (see [Capturing PHP errors](#capturing-php-errors)) |
+
+> [!IMPORTANT]
+> `capture_php_errors` is read when WACK Log is loaded, so the constant must be
+> defined before plugins are loaded. Defining it in a theme's `functions.php`
+> has no effect on `capture_php_errors`.
 
 ### Setting via WordPress admin menu
 

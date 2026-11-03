@@ -206,4 +206,15 @@ final class ErrorCaptureProcessTest extends TestCase
         $this->assertSame('CRITICAL', $records[0]['level_name']);
         $this->assertStringContainsString('Allowed memory size', $records[0]['message']);
     }
+
+    // phpcs:ignore
+    public function test_out_of_memory_error_is_logged_when_wp_fatal_handler_exits_first(): void
+    {
+        [$exit_code, $records, $stdout, $stderr] = $this->runScenario('out_of_memory', true);
+
+        $this->assertSame(1, $exit_code);
+        $this->assertStringContainsString('WP_DIE', $stderr);
+        $this->assertCount(1, $records);
+        $this->assertStringContainsString('Allowed memory size', $records[0]['message']);
+    }
 }

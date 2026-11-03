@@ -566,6 +566,45 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
         $this->assertCount(0, $this->handler->getRecords());
     }
 
+    private static function reservedMemory(ErrorCapture $capture): ?string
+    {
+        return (new \ReflectionProperty(ErrorCapture::class, 'reserved_memory'))->getValue($capture);
+    }
+
+    // phpcs:ignore
+    public function test_register_reserves_memory(): void
+    {
+        $this->pushErrorHandler(null);
+        $capture = new ErrorCapture($this->logger);
+        $this->registerCapture($capture);
+
+        $this->assertSame(20 * 1024, strlen(self::reservedMemory($capture)));
+    }
+
+    // phpcs:ignore
+    public function test_filterPhpErrorMessage_frees_reserved_memory_before_logging(): void
+    {
+        $this->pushErrorHandler(null);
+        $capture = new ErrorCapture($this->logger);
+        $this->registerCapture($capture);
+
+        $capture->filterPhpErrorMessage('message', ['type' => E_ERROR, 'message' => 'Fatal!', 'file' => 'f', 'line' => 1]);
+
+        $this->assertNull(self::reservedMemory($capture));
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_keeps_reserved_memory_for_non_fatal_errors(): void
+    {
+        $this->pushErrorHandler(null);
+        $capture = new ErrorCapture($this->logger);
+        $this->registerCapture($capture);
+
+        $capture->filterPhpErrorMessage('message', ['type' => E_WARNING, 'message' => 'w', 'file' => 'f', 'line' => 1]);
+
+        $this->assertNotNull(self::reservedMemory($capture));
+    }
+
     // phpcs:ignore
     public function test_filterPhpErrorMessage_and_handleFatalError_do_not_duplicate(): void
     {

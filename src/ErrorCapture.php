@@ -176,7 +176,6 @@ class ErrorCapture
      */
     public function handleShutdown(): void
     {
-        $this->reserved_memory = null;
         $this->handleFatalError(error_get_last());
     }
 
@@ -195,6 +194,10 @@ class ErrorCapture
         if (!self::isReported($error['type'])) {
             return;
         }
+
+        // Free the reserved memory here, as this is reached either from the shutdown function or
+        // from the 'wp_php_error_message' filter (in which case the shutdown function never runs).
+        $this->reserved_memory = null;
         $this->fatal_error_logged = true;
 
         $this->logger->log(
