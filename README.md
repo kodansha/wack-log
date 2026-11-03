@@ -68,7 +68,9 @@ define('WACK_LOG_SETTINGS', [
 > [!NOTE]
 > Please be aware of the following limitations:
 >
-> - `error_reporting()` and the `@` operator are respected.
+> - `error_reporting()` and the `@` operator are respected, including for fatal
+>   errors and WordPress debug messages (which are treated as `E_USER_NOTICE` for
+>   `_doing_it_wrong()` and `E_USER_DEPRECATED` for `_deprecated_*()`).
 > - Errors raised before WACK Log is loaded (e.g. in `wp-config.php`,
 >   WordPress core bootstrap or must-use plugins) are not captured.
 > - Messages passed directly to `error_log()` are not captured.
@@ -78,7 +80,8 @@ define('WACK_LOG_SETTINGS', [
 >   they are not written to `wp-content/debug.log` or displayed on the screen
 >   even if `WP_DEBUG_LOG` / `WP_DEBUG_DISPLAY` are enabled.
 >   If another error handler (e.g. an error tracking service) was registered
->   before WACK Log, it is still called.
+>   before WACK Log, it is still called, but captured errors are not passed to
+>   PHP's standard error handler even if it returns `false`.
 > - Uncaught exceptions are not handled by an exception handler, so that
 >   WordPress' fatal error handler and recovery mode keep working.
 

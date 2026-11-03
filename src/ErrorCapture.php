@@ -136,11 +136,14 @@ class ErrorCapture
      *
      * Returns false to let PHP's standard error handler handle the error,
      * true to stop further handling.
+     *
+     * The previous error handler, if any, is always called. Its return value is
+     * respected only for errors that are not logged here (unreported or fatal).
      */
     public function handleError(int $errno, string $errstr, string $errfile = '', int $errline = 0): bool
     {
         // Respect error_reporting() and the @ operator
-        if ((error_reporting() & $errno) === 0) {
+        if (!self::isReported($errno)) {
             return $this->callPreviousErrorHandler($errno, $errstr, $errfile, $errline) ?? false;
         }
 
@@ -161,7 +164,11 @@ class ErrorCapture
             ],
         );
 
-        return $this->callPreviousErrorHandler($errno, $errstr, $errfile, $errline) ?? true;
+        // The error has been logged, so don't pass it to PHP's standard error handler
+        // even if the previous handler asks to.
+        $this->callPreviousErrorHandler($errno, $errstr, $errfile, $errline);
+
+        return true;
     }
 
     /**
@@ -181,6 +188,11 @@ class ErrorCapture
     public function handleFatalError(?array $error): void
     {
         if ($this->fatal_error_logged || !is_array($error) || !in_array($error['type'] ?? null, self::FATAL_ERRORS, true)) {
+            return;
+        }
+
+        // Respect error_reporting() as PHP does
+        if (!self::isReported($error['type'])) {
             return;
         }
         $this->fatal_error_logged = true;
@@ -214,7 +226,8 @@ class ErrorCapture
 
     public function logDoingItWrong($function_name, $message, $version): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_NOTICE,
             sprintf('%s was called incorrectly. %s (This message was added in version %s.)', $function_name, $message, $version),
             ['type' => 'doing_it_wrong', 'function' => $function_name, 'version' => $version],
         );
@@ -222,7 +235,8 @@ class ErrorCapture
 
     public function logDeprecatedFunction($function_name, $replacement, $version): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_DEPRECATED,
             sprintf('Function %s is deprecated since version %s', $function_name, $version)
                 . ($replacement ? sprintf('! Use %s instead.', $replacement) : ' with no alternative available.'),
             ['type' => 'deprecated_function', 'function' => $function_name, 'replacement' => $replacement, 'version' => $version],
@@ -231,7 +245,8 @@ class ErrorCapture
 
     public function logDeprecatedConstructor($class_name, $version, $parent_class = ''): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_DEPRECATED,
             sprintf('The called constructor method for %s', $class_name)
                 . ($parent_class ? sprintf(' in %s', $parent_class) : '')
                 . sprintf(' is deprecated since version %s! Use __construct() instead.', $version),
@@ -241,7 +256,8 @@ class ErrorCapture
 
     public function logDeprecatedClass($class_name, $replacement, $version): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_DEPRECATED,
             sprintf('Class %s is deprecated since version %s', $class_name, $version)
                 . ($replacement ? sprintf('! Use %s instead.', $replacement) : ' with no alternative available.'),
             ['type' => 'deprecated_class', 'class' => $class_name, 'replacement' => $replacement, 'version' => $version],
@@ -250,7 +266,8 @@ class ErrorCapture
 
     public function logDeprecatedFile($file, $replacement, $version, $message = ''): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_DEPRECATED,
             sprintf('File %s is deprecated since version %s', $file, $version)
                 . ($replacement ? sprintf('! Use %s instead.', $replacement) : ' with no alternative available.')
                 . ($message ? ' ' . $message : ''),
@@ -260,7 +277,8 @@ class ErrorCapture
 
     public function logDeprecatedArgument($function_name, $message, $version): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_DEPRECATED,
             sprintf('Function %s was called with an argument that is deprecated since version %s', $function_name, $version)
                 . ($message ? '! ' . $message : ' with no alternative available.'),
             ['type' => 'deprecated_argument', 'function' => $function_name, 'version' => $version],
@@ -269,12 +287,35 @@ class ErrorCapture
 
     public function logDeprecatedHook($hook, $replacement, $version, $message = ''): void
     {
-        $this->logger->notice(
+        $this->logWordPressDebugMessage(
+            E_USER_DEPRECATED,
             sprintf('Hook %s is deprecated since version %s', $hook, $version)
                 . ($replacement ? sprintf('! Use %s instead.', $replacement) : ' with no alternative available.')
                 . ($message ? ' ' . $message : ''),
             ['type' => 'deprecated_hook', 'hook' => $hook, 'replacement' => $replacement, 'version' => $version],
         );
+    }
+
+    /**
+     * Log a WordPress debug message, which would otherwise be raised by trigger_error() with $errno
+     *
+     * As trigger_error() is suppressed, check error_reporting() (and the @ operator) here instead.
+     */
+    private function logWordPressDebugMessage(int $errno, string $message, array $context): void
+    {
+        if (!self::isReported($errno)) {
+            return;
+        }
+
+        $this->logger->notice($message, $context);
+    }
+
+    /**
+     * Whether the given error type is included in error_reporting()
+     */
+    private static function isReported(int $errno): bool
+    {
+        return (error_reporting() & $errno) !== 0;
     }
 
     /**
@@ -288,7 +329,10 @@ class ErrorCapture
     /**
      * Call the error handler that was set before this one, if any
      *
-     * @return bool|null The return value of the previous handler, or null if there is none
+     * PHP passes an error to its standard error handler only if the handler returns exactly false,
+     * so any other return value (including null) is treated as true.
+     *
+     * @return bool|null Whether the previous handler handled the error, or null if there is none
      */
     private function callPreviousErrorHandler(int $errno, string $errstr, string $errfile, int $errline): ?bool
     {
@@ -296,6 +340,6 @@ class ErrorCapture
             return null;
         }
 
-        return (bool) call_user_func($this->previous_error_handler, $errno, $errstr, $errfile, $errline);
+        return call_user_func($this->previous_error_handler, $errno, $errstr, $errfile, $errline) !== false;
     }
 }

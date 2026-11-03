@@ -71,6 +71,14 @@ if (in_array('--wp-fatal-handler', $argv, true)) {
     });
 }
 
+// Mimic an error handler registered before WACK Log that asks for PHP's standard error handler
+if (in_array('--previous-handler', $argv, true)) {
+    set_error_handler(function () {
+        echo "PREVIOUS_HANDLER_CALLED\n";
+        return false;
+    });
+}
+
 $logger = new WackLog\StdoutLogger(true);
 (new WackLog\ErrorCapture($logger->getMonolog(), true))->register();
 
@@ -93,6 +101,17 @@ switch ($scenario) {
 
     case 'doing_it_wrong':
         _doing_it_wrong('some_function', 'Do it right.', '6.0.0');
+        echo "CONTINUED\n";
+        break;
+
+    case 'suppressed_doing_it_wrong':
+        @_doing_it_wrong('some_function', 'Do it right.', '6.0.0');
+        echo "CONTINUED\n";
+        break;
+
+    case 'unreported_fatal':
+        error_reporting(0);
+        undefined_function();
         echo "CONTINUED\n";
         break;
 

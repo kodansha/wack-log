@@ -303,7 +303,7 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
     }
 
     // phpcs:ignore
-    public function test_handleError_calls_previous_handler_and_returns_its_result(): void
+    public function test_handleError_calls_previous_handler_but_skips_php_standard_handler_for_logged_errors(): void
     {
         error_reporting(E_ALL);
         $calls = [];
@@ -316,20 +316,52 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
 
         $result = $capture->handleError(E_WARNING, 'Chained', '/path/to/file.php', 7);
 
-        $this->assertFalse($result);
+        // The previous handler asks for PHP's standard handler, but the error has already been logged
+        $this->assertTrue($result);
         $this->assertSame([[E_WARNING, 'Chained', '/path/to/file.php', 7]], $calls);
         $this->assertCount(1, $this->handler->getRecords());
     }
 
+    public static function previousHandlerResultProvider(): array
+    {
+        return [
+            'false' => [false, false],
+            'true' => [true, true],
+            // PHP passes an error to its standard handler only if the handler returns exactly false
+            'null (void)' => [null, true],
+            '0' => [0, true],
+            'empty string' => ['', true],
+        ];
+    }
+
+    /**
+     * @dataProvider previousHandlerResultProvider
+     */
     // phpcs:ignore
-    public function test_handleError_casts_previous_handler_result_to_bool(): void
+    public function test_handleError_respects_previous_handler_result_for_fatal_errors($previous_result, bool $expected): void
     {
         error_reporting(E_ALL);
-        $this->pushErrorHandler(fn() => null);
+        $this->pushErrorHandler(fn() => $previous_result);
         $capture = new ErrorCapture($this->logger);
         $this->registerCapture($capture);
 
-        $this->assertFalse($capture->handleError(E_WARNING, 'Chained', '/path/to/file.php', 7));
+        $this->assertSame($expected, $capture->handleError(E_USER_ERROR, 'User fatal', '/path/to/file.php', 1));
+        $this->assertCount(0, $this->handler->getRecords());
+    }
+
+    /**
+     * @dataProvider previousHandlerResultProvider
+     */
+    // phpcs:ignore
+    public function test_handleError_respects_previous_handler_result_for_unreported_errors($previous_result, bool $expected): void
+    {
+        error_reporting(0);
+        $this->pushErrorHandler(fn() => $previous_result);
+        $capture = new ErrorCapture($this->logger);
+        $this->registerCapture($capture);
+
+        $this->assertSame($expected, $capture->handleError(E_WARNING, 'Silenced', '/path/to/file.php', 1));
+        $this->assertCount(0, $this->handler->getRecords());
     }
 
     // phpcs:ignore
@@ -430,6 +462,43 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
 
         $capture->handleFatalError($error);
 
+        $this->assertCount(0, $this->handler->getRecords());
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_ignores_errors_not_in_error_reporting(): void
+    {
+        error_reporting(E_ALL & ~E_USER_ERROR);
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(['type' => E_USER_ERROR, 'message' => 'Unreported', 'file' => 'f', 'line' => 1]);
+        $this->assertCount(0, $this->handler->getRecords());
+
+        // An ignored error does not prevent a later reported one from being logged
+        $capture->handleFatalError(['type' => E_ERROR, 'message' => 'Reported', 'file' => 'f', 'line' => 1]);
+        $this->assertSame('Reported', $this->onlyRecord()->context['message']);
+    }
+
+    // phpcs:ignore
+    public function test_handleFatalError_ignores_all_errors_when_error_reporting_is_zero(): void
+    {
+        error_reporting(0);
+        $capture = new ErrorCapture($this->logger);
+
+        $capture->handleFatalError(['type' => E_ERROR, 'message' => 'Fatal!', 'file' => 'f', 'line' => 1]);
+
+        $this->assertCount(0, $this->handler->getRecords());
+    }
+
+    // phpcs:ignore
+    public function test_filterPhpErrorMessage_ignores_errors_not_in_error_reporting(): void
+    {
+        error_reporting(0);
+        $capture = new ErrorCapture($this->logger);
+
+        $result = $capture->filterPhpErrorMessage('message', ['type' => E_ERROR, 'message' => 'Fatal!', 'file' => 'f', 'line' => 1]);
+
+        $this->assertSame('message', $result);
         $this->assertCount(0, $this->handler->getRecords());
     }
 
@@ -682,6 +751,68 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
         $this->assertSame(
             'Hook old_hook is deprecated since version 4.0.0 with no alternative available.',
             $this->onlyRecord()->message,
+        );
+    }
+
+    public static function wordPressDebugMessageProvider(): array
+    {
+        return [
+            'doing_it_wrong' => ['logDoingItWrong', ['func', 'message', '1.0.0'], E_USER_NOTICE],
+            'deprecated_function' => ['logDeprecatedFunction', ['func', 'new_func', '1.0.0'], E_USER_DEPRECATED],
+            'deprecated_constructor' => ['logDeprecatedConstructor', ['Klass', '1.0.0', 'Parent'], E_USER_DEPRECATED],
+            'deprecated_class' => ['logDeprecatedClass', ['Klass', 'NewKlass', '1.0.0'], E_USER_DEPRECATED],
+            'deprecated_file' => ['logDeprecatedFile', ['old.php', 'new.php', '1.0.0', 'message'], E_USER_DEPRECATED],
+            'deprecated_argument' => ['logDeprecatedArgument', ['func', 'message', '1.0.0'], E_USER_DEPRECATED],
+            'deprecated_hook' => ['logDeprecatedHook', ['hook', 'new_hook', '1.0.0', 'message'], E_USER_DEPRECATED],
+        ];
+    }
+
+    /**
+     * @dataProvider wordPressDebugMessageProvider
+     */
+    // phpcs:ignore
+    public function test_wordpress_debug_message_is_logged_when_its_error_type_is_reported(string $method, array $args, int $errno): void
+    {
+        error_reporting($errno);
+
+        (new ErrorCapture($this->logger))->{$method}(...$args);
+
+        $this->assertSame(Level::Notice, $this->onlyRecord()->level);
+    }
+
+    /**
+     * @dataProvider wordPressDebugMessageProvider
+     */
+    // phpcs:ignore
+    public function test_wordpress_debug_message_is_not_logged_when_its_error_type_is_not_reported(string $method, array $args, int $errno): void
+    {
+        error_reporting(E_ALL & ~$errno);
+
+        (new ErrorCapture($this->logger))->{$method}(...$args);
+
+        $this->assertCount(0, $this->handler->getRecords());
+    }
+
+    /**
+     * @dataProvider wordPressDebugMessageProvider
+     */
+    // phpcs:ignore
+    public function test_wordpress_debug_message_is_not_logged_with_at_operator(string $method, array $args): void
+    {
+        error_reporting(E_ALL);
+        $capture = new ErrorCapture($this->logger);
+
+        @$capture->{$method}(...$args);
+
+        $this->assertCount(0, $this->handler->getRecords());
+    }
+
+    // phpcs:ignore
+    public function test_wp_debug_hooks_cover_all_data_provider_cases(): void
+    {
+        $this->assertSame(
+            array_column(ErrorCapture::WP_DEBUG_HOOKS, 0),
+            array_column(self::wordPressDebugMessageProvider(), 0),
         );
     }
 

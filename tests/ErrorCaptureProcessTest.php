@@ -13,7 +13,7 @@ final class ErrorCaptureProcessTest extends TestCase
     /**
      * Run the fixture and return [exit code, decoded JSON log records from stdout, stdout, stderr]
      */
-    private function runScenario(string $scenario, bool $wp_fatal_handler = false): array
+    private function runScenario(string $scenario, bool $wp_fatal_handler = false, bool $previous_handler = false): array
     {
         $command = [
             PHP_BINARY,
@@ -27,6 +27,9 @@ final class ErrorCaptureProcessTest extends TestCase
         ];
         if ($wp_fatal_handler) {
             $command[] = '--wp-fatal-handler';
+        }
+        if ($previous_handler) {
+            $command[] = '--previous-handler';
         }
 
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -58,6 +61,18 @@ final class ErrorCaptureProcessTest extends TestCase
         $this->assertSame('WARNING', $records[0]['level_name']);
         $this->assertSame('E_WARNING', $records[0]['context']['type']);
         $this->assertStringContainsString('Undefined array key "undefined_key"', $records[0]['message']);
+        $this->assertStringNotContainsString('Undefined array key', $stderr, 'Should not reach PHP standard error log');
+    }
+
+    // phpcs:ignore
+    public function test_warning_is_not_passed_to_php_error_log_even_if_previous_handler_returns_false(): void
+    {
+        [$exit_code, $records, $stdout, $stderr] = $this->runScenario('warning', false, true);
+
+        $this->assertSame(0, $exit_code);
+        $this->assertStringContainsString('PREVIOUS_HANDLER_CALLED', $stdout);
+        $this->assertCount(1, $records);
+        $this->assertSame('E_WARNING', $records[0]['context']['type']);
         $this->assertStringNotContainsString('Undefined array key', $stderr, 'Should not reach PHP standard error log');
     }
 
@@ -96,6 +111,27 @@ final class ErrorCaptureProcessTest extends TestCase
             $records[0]['context'],
         );
         $this->assertSame('', $stderr);
+    }
+
+    // phpcs:ignore
+    public function test_doing_it_wrong_with_at_operator_is_not_logged(): void
+    {
+        [$exit_code, $records, $stdout, $stderr] = $this->runScenario('suppressed_doing_it_wrong');
+
+        $this->assertSame(0, $exit_code);
+        $this->assertStringContainsString('CONTINUED', $stdout);
+        $this->assertCount(0, $records);
+        $this->assertSame('', $stderr);
+    }
+
+    // phpcs:ignore
+    public function test_unreported_fatal_error_is_not_logged(): void
+    {
+        [$exit_code, $records, $stdout] = $this->runScenario('unreported_fatal');
+
+        $this->assertSame(255, $exit_code);
+        $this->assertStringNotContainsString('CONTINUED', $stdout);
+        $this->assertCount(0, $records);
     }
 
     // phpcs:ignore
