@@ -4,7 +4,7 @@
  * Plugin Name: WACK Log
  * Plugin URI: https://packagist.org/packages/kodansha/wack-log
  * Description: Simple logger plugin to output logs to stdout.
- * Version: 0.1.2
+ * Version: 0.3.0
  * Author: KODANSHAtech LLC.
  * Author URI: https://github.com/kodansha
  * License: GPLv3 or later
@@ -52,6 +52,40 @@ if (!function_exists('logger')) {
         return $instance;
     }
 }
+
+if (!function_exists('wack_log_register_error_capture')) {
+    /**
+     * Route PHP errors and WordPress debug messages to the logger if enabled in the settings.
+     *
+     * This is called when the plugin file is loaded (not on a hook) to capture errors
+     * as early as possible.
+     *
+     * @return WackLog\ErrorCapture|null The registered instance, or null if disabled.
+     */
+    function wack_log_register_error_capture(): ?WackLog\ErrorCapture
+    {
+        static $instance = null;
+
+        if (!is_null($instance)) {
+            return $instance;
+        }
+
+        if (!WackLog\PluginSettings::get()->capturePhpErrors()) {
+            return null;
+        }
+
+        // Resolve the logger on each log, as it may be re-instantiated (e.g. when the settings are saved)
+        $instance = new WackLog\ErrorCapture(
+            fn() => logger()->getMonolog(),
+            defined('WP_DEBUG') && WP_DEBUG,
+        );
+        $instance->register();
+
+        return $instance;
+    }
+}
+
+wack_log_register_error_capture();
 
 /**
  * Initialize plugin

@@ -103,12 +103,40 @@ class AdminMenu
                 $settings_option = get_option('wack_log_settings');
                 $use_json_format = $settings_option['use_json_format'] ?? false;
                 ?>
-                <input type="checkbox" name="wack_log_settings[use_json_format]" <?php echo $use_json_format ? 'checked' : ''; ?>>
+                <input type="checkbox" id="wack_log_settings_use_json_format" name="wack_log_settings[use_json_format]" <?php echo $use_json_format ? 'checked' : ''; ?>>
                 <p>Check if you want to use JSON as log output format.</p>
                 <?php
             },
             'wack-log-settings-page',
             'wack-log-settings-log-format-section',
+            ['label_for' => 'wack_log_settings_use_json_format'],
+        );
+
+        //----------------------------------------------------------------------
+        // Error Capture
+        //----------------------------------------------------------------------
+        add_settings_section(
+            'wack-log-settings-error-capture-section',
+            'Error Capture',
+            '__return_null',
+            'wack-log-settings-page',
+        );
+
+        add_settings_field(
+            'capture_php_errors',
+            'Capture PHP errors',
+            function () {
+                $settings_option = get_option('wack_log_settings');
+                $capture_php_errors = $settings_option['capture_php_errors'] ?? false;
+                ?>
+                <input type="checkbox" id="wack_log_settings_capture_php_errors" name="wack_log_settings[capture_php_errors]" <?php echo $capture_php_errors ? 'checked' : ''; ?>>
+                <p>Check if you want to output PHP errors (warnings, notices, deprecations and fatal errors) and WordPress debug messages through WACK Log instead of PHP's standard error log.</p>
+                <p>The change takes effect from the next request.</p>
+                <?php
+            },
+            'wack-log-settings-page',
+            'wack-log-settings-error-capture-section',
+            ['label_for' => 'wack_log_settings_capture_php_errors'],
         );
 
         // Remove the default WACK Stack settings page
