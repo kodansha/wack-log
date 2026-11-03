@@ -82,6 +82,8 @@ define('WACK_LOG_SETTINGS', [
 >   If another error handler (e.g. an error tracking service) was registered
 >   before WACK Log, it is still called, but captured errors are not passed to
 >   PHP's standard error handler even if it returns `false`.
+>   Note that it is called for every error type even if it was registered for
+>   specific types only, as PHP provides no way to know them.
 > - Uncaught exceptions are not handled by an exception handler, so that
 >   WordPress' fatal error handler and recovery mode keep working.
 

@@ -2,6 +2,7 @@
 
 namespace WackLog;
 
+use Closure;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
@@ -23,10 +24,14 @@ use Psr\Log\LogLevel;
  * Uncaught exceptions are intentionally not handled by set_exception_handler()
  * so that WordPress' fatal error handler and recovery mode keep working.
  *
+ * The error handler set before this one is called for every error, even if it was
+ * registered for specific error types only, because PHP provides no way to get
+ * the error types of the previous handler.
+ *
  * [Usage]
  * use WackLog\ErrorCapture;
  *
- * (new ErrorCapture(logger()->getMonolog()))->register();
+ * (new ErrorCapture(fn() => logger()->getMonolog()))->register();
  */
 class ErrorCapture
 {
@@ -91,8 +96,12 @@ class ErrorCapture
      */
     private ?string $reserved_memory = null;
 
+    /**
+     * @param LoggerInterface|Closure(): LoggerInterface $logger The logger, or a closure that returns
+     *     the logger to use at the time of logging (so that a replaced logger is picked up)
+     */
     public function __construct(
-        private LoggerInterface $logger,
+        private LoggerInterface|Closure $logger,
         private bool $wp_debug = false,
     ) {}
 
@@ -153,7 +162,7 @@ class ErrorCapture
             return $this->callPreviousErrorHandler($errno, $errstr, $errfile, $errline) ?? false;
         }
 
-        $this->logger->log(
+        $this->logger()->log(
             self::ERROR_LEVEL_MAP[$errno] ?? LogLevel::CRITICAL,
             sprintf('PHP %s: %s in %s on line %d', self::errorName($errno), $errstr, $errfile, $errline),
             [
@@ -200,7 +209,7 @@ class ErrorCapture
         $this->reserved_memory = null;
         $this->fatal_error_logged = true;
 
-        $this->logger->log(
+        $this->logger()->log(
             LogLevel::CRITICAL,
             sprintf('PHP Fatal error (%s): %s in %s on line %d', self::errorName($error['type']), $error['message'], $error['file'], $error['line']),
             [
@@ -310,7 +319,15 @@ class ErrorCapture
             return;
         }
 
-        $this->logger->notice($message, $context);
+        $this->logger()->notice($message, $context);
+    }
+
+    /**
+     * Get the logger to use now
+     */
+    private function logger(): LoggerInterface
+    {
+        return $this->logger instanceof Closure ? ($this->logger)() : $this->logger;
     }
 
     /**

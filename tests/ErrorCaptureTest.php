@@ -856,6 +856,46 @@ final class ErrorCaptureTest extends WP_Mock\Tools\TestCase
     }
 
     //==========================================================================
+    // Logger resolution
+    //==========================================================================
+    // phpcs:ignore
+    public function test_logger_closure_is_resolved_at_the_time_of_logging(): void
+    {
+        error_reporting(E_ALL);
+        $current = $this->logger;
+        $capture = new ErrorCapture(function () use (&$current) {
+            return $current;
+        });
+
+        $capture->handleError(E_WARNING, 'First', 'f', 1);
+
+        $new_handler = new TestHandler();
+        $current = new Logger('replaced', [$new_handler]);
+        $capture->handleError(E_WARNING, 'Second', 'f', 1);
+        $capture->logDoingItWrong('func', 'Third', '1.0.0');
+        $capture->handleFatalError(['type' => E_ERROR, 'message' => 'Fourth', 'file' => 'f', 'line' => 1]);
+
+        $this->assertSame(['First'], array_map(fn($r) => $r->context['message'], $this->handler->getRecords()));
+        $this->assertCount(3, $new_handler->getRecords());
+    }
+
+    // phpcs:ignore
+    public function test_logger_closure_is_not_called_when_nothing_is_logged(): void
+    {
+        error_reporting(0);
+        $called = false;
+        $capture = new ErrorCapture(function () use (&$called) {
+            $called = true;
+            return $this->logger;
+        });
+
+        $capture->handleError(E_WARNING, 'Ignored', 'f', 1);
+        $capture->handleFatalError(null);
+
+        $this->assertFalse($called);
+    }
+
+    //==========================================================================
     // errorName
     //==========================================================================
     // phpcs:ignore

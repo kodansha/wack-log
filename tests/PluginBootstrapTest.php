@@ -136,6 +136,31 @@ final class PluginBootstrapTest extends TestCase
     }
 
     // phpcs:ignore
+    public function test_error_capture_follows_re_instantiated_logger(): void
+    {
+        // Remove PHPUnit's error handler so that it is not chained
+        set_error_handler(null);
+        $this->loadPlugin(['capture_php_errors' => true]);
+        $capture = wack_log_register_error_capture();
+
+        $old_handler = new \Monolog\Handler\TestHandler();
+        logger()->getMonolog()->setHandlers([$old_handler]);
+
+        // e.g. AdminMenu::optionsSanitizeCallback() when the settings are saved
+        logger(null, true);
+        $new_handler = new \Monolog\Handler\TestHandler();
+        logger()->getMonolog()->setHandlers([$new_handler]);
+
+        $capture->handleError(E_WARNING, 'After re-instantiation', '/path/to/file.php', 1);
+
+        $this->assertFalse($old_handler->hasWarningRecords());
+        $this->assertTrue($new_handler->hasWarningThatContains('After re-instantiation'));
+
+        restore_error_handler();
+        restore_error_handler();
+    }
+
+    // phpcs:ignore
     public function test_wp_debug_hooks_are_added_when_wp_debug_is_enabled(): void
     {
         define('WP_DEBUG', true);

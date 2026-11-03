@@ -74,8 +74,9 @@ if (!function_exists('wack_log_register_error_capture')) {
             return null;
         }
 
+        // Resolve the logger on each log, as it may be re-instantiated (e.g. when the settings are saved)
         $instance = new WackLog\ErrorCapture(
-            logger()->getMonolog(),
+            fn() => logger()->getMonolog(),
             defined('WP_DEBUG') && WP_DEBUG,
         );
         $instance->register();
